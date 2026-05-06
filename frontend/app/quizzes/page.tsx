@@ -23,10 +23,10 @@ export default function QuizzesPage() {
       {quizzes.length ? (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           {quizzes.map((quiz) => (
-            <article key={quiz.id} className="rounded-lg border border-study-line bg-white p-6">
-              <h2 className="font-semibold text-study-navy">{quiz.title}</h2>
+            <article key={quiz.id} className="rounded-lg border border-study-line bg-white p-5 sm:p-6">
+              <h2 className="break-words font-semibold text-study-navy">{quiz.title}</h2>
               <p className="mt-2 text-sm text-slate-500">{quiz.difficulty} · {quiz.questions.length} questions</p>
-              <Link href={`/documents/${quiz.document_id}/quizzes`} className="mt-5 inline-flex rounded border border-study-line px-3 py-2 text-sm font-semibold text-study-navy hover:bg-slate-50">Retake from document</Link>
+              <Link href={`/documents/${quiz.document_id}/quizzes`} className="mt-5 inline-flex w-full justify-center rounded border border-study-line px-3 py-2 text-sm font-semibold text-study-navy hover:bg-slate-50 sm:w-auto">Retake from document</Link>
             </article>
           ))}
         </div>

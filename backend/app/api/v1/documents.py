@@ -37,37 +37,51 @@ def upload_document(file: UploadFile = File(...), current_user: dict = Depends(g
     if suffix not in ALLOWED_SUFFIXES or file.content_type not in ALLOWED_TYPES:
         raise HTTPException(status_code=400, detail="Unsupported file type. Please upload a PDF or TXT file.")
 
-    user_upload_dir = settings.upload_path / current_user["id"]
-    user_upload_dir.mkdir(parents=True, exist_ok=True)
-    stored_filename = f"{uuid4().hex}{suffix}"
-    stored_path = user_upload_dir / stored_filename
+    try:
+        user_upload_dir = settings.upload_path / current_user["id"]
+        user_upload_dir.mkdir(parents=True, exist_ok=True)
+        stored_filename = f"{uuid4().hex}{suffix}"
+        stored_path = user_upload_dir / stored_filename
 
-    size = 0
-    with stored_path.open("wb") as output:
-        while chunk := file.file.read(1024 * 1024):
-            size += len(chunk)
-            if size > settings.max_upload_size_mb * 1024 * 1024:
-                stored_path.unlink(missing_ok=True)
-                raise HTTPException(status_code=413, detail="File is too large for the MVP upload limit.")
-            output.write(chunk)
+        size = 0
+        max_size = settings.max_upload_size_mb * 1024 * 1024
+        too_large = False
+        with stored_path.open("wb") as output:
+            while chunk := file.file.read(1024 * 1024):
+                size += len(chunk)
+                if size > max_size:
+                    too_large = True
+                    break
+                output.write(chunk)
+        if too_large:
+            stored_path.unlink(missing_ok=True)
+            raise HTTPException(status_code=413, detail="File is too large for the MVP upload limit.")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Could not save uploaded file: {exc}") from exc
 
     if size == 0:
         stored_path.unlink(missing_ok=True)
         raise HTTPException(status_code=400, detail="Empty files cannot be processed.")
 
-    document = store.insert(
-        "documents",
-        {
-            "user_id": current_user["id"],
-            "title": Path(original_filename).stem,
-            "original_filename": original_filename,
-            "file_type": suffix.replace(".", "").upper(),
-            "file_path": str(stored_path),
-            "status": "processing",
-            "error_message": None,
-            "total_pages": 0,
-        },
-    )
+    try:
+        document = store.insert(
+            "documents",
+            {
+                "user_id": current_user["id"],
+                "title": Path(original_filename).stem,
+                "original_filename": original_filename,
+                "file_type": suffix.replace(".", "").upper(),
+                "file_path": str(stored_path),
+                "status": "processing",
+                "error_message": None,
+                "total_pages": 0,
+            },
+        )
+    except Exception as exc:
+        stored_path.unlink(missing_ok=True)
+        raise HTTPException(status_code=500, detail=f"Could not save document metadata: {exc}") from exc
 
     try:
         pages = remove_repeated_page_artifacts(extract_text(stored_path, file.content_type))
@@ -123,7 +137,8 @@ def upload_document(file: UploadFile = File(...), current_user: dict = Depends(g
             },
         )
     except Exception as exc:
-        document = store.update("documents", document["id"], {"status": "failed", "error_message": str(exc)})
+        failed_document = store.update("documents", document["id"], {"status": "failed", "error_message": str(exc)})
+        document = failed_document or {**document, "status": "failed", "error_message": str(exc)}
 
     return serialize_document(document)
 

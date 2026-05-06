@@ -25,9 +25,9 @@ export default function FlashcardsPage() {
       {error ? <p className="mb-6 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {cards.map((card) => (
-          <button key={card.id} onClick={() => setFlipped((current) => ({ ...current, [card.id]: !current[card.id] }))} className="min-h-56 rounded-lg border border-study-line bg-white p-6 text-left hover:shadow-academic">
+          <button key={card.id} onClick={() => setFlipped((current) => ({ ...current, [card.id]: !current[card.id] }))} className="min-h-48 rounded-lg border border-study-line bg-white p-5 text-left hover:shadow-academic sm:min-h-56 sm:p-6">
             <p className="text-xs font-semibold uppercase text-study-accent">Page {card.source_page}</p>
-            <p className="reading-copy mt-4 text-lg text-study-navy">{flipped[card.id] ? card.back : card.front}</p>
+            <p className="reading-copy mt-4 break-words text-base text-study-navy sm:text-lg">{flipped[card.id] ? card.back : card.front}</p>
             <p className="mt-5 text-xs text-slate-500">Click to flip</p>
           </button>
         ))}

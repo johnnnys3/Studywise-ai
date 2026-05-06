@@ -51,14 +51,14 @@ export default function AskDocumentPage() {
           />
         </label>
         {error ? <p className="mt-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
-        <button disabled={loading} className="mt-4 rounded bg-study-navy px-5 py-2.5 text-sm font-semibold text-white hover:bg-black disabled:opacity-60">
+        <button disabled={loading} className="mt-4 w-full rounded bg-study-navy px-5 py-2.5 text-sm font-semibold text-white hover:bg-black disabled:opacity-60 sm:w-auto">
           {loading ? "Retrieving..." : "Ask document"}
         </button>
       </form>
 
       <section className="mt-8 space-y-5">
         {responses.length ? responses.map((item) => (
-          <article key={item.question} className="rounded-lg border border-study-line bg-white p-6">
+          <article key={item.question} className="rounded-lg border border-study-line bg-white p-5 sm:p-6">
             <p className="text-sm font-semibold text-slate-500">Question</p>
             <p className="mt-2 text-study-navy">{item.question}</p>
             <p className="reading-copy mt-5 text-lg text-slate-800">{item.response.answer}</p>
@@ -67,7 +67,7 @@ export default function AskDocumentPage() {
               <summary className="cursor-pointer text-sm font-semibold text-study-navy">Retrieved context</summary>
               <div className="mt-3 space-y-3">
                 {item.response.retrieved_context.map((chunk) => (
-                  <p key={chunk.id} className="reading-copy text-sm text-slate-600">
+                  <p key={chunk.id} className="reading-copy break-words text-sm text-slate-600">
                     Page {chunk.page_number}: {chunk.chunk_text.slice(0, 420)}
                   </p>
                 ))}
@@ -75,9 +75,9 @@ export default function AskDocumentPage() {
             </details>
           </article>
         )) : (
-          <div className="rounded-lg border border-study-line bg-white p-6">
+          <div className="rounded-lg border border-study-line bg-white p-5 sm:p-6">
             <p className="font-semibold text-study-navy">Suggested questions</p>
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-4 grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
               {["Summarize the main idea.", "What should I review first?", "Create three study questions."].map((suggestion) => (
                 <button key={suggestion} type="button" onClick={() => setQuestion(suggestion)} className="rounded border border-study-line px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">
                   {suggestion}

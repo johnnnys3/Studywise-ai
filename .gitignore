@@ -14,6 +14,8 @@ build/
 
 # Local data and uploads
 backend/data/*.json
+backend/data/*.json.lock
+backend/data/.*.json.*.tmp
 backend/data/chroma/
 backend/uploads/
 backend/pytest-cache-files-*/

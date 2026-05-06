@@ -26,7 +26,7 @@ export default function EvaluationPage() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
         {metrics.map((metric) => (
           <article key={metric.metric_name} className="rounded-lg border border-study-line bg-white p-5">
-            <p className="text-sm font-medium capitalize text-slate-500">{metric.metric_name.replaceAll("_", " ")}</p>
+            <p className="break-words text-sm font-medium capitalize text-slate-500">{metric.metric_name.replaceAll("_", " ")}</p>
             <p className="mt-3 text-3xl font-semibold text-study-navy">{metric.metric_value}</p>
           </article>
         ))}

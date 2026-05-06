@@ -30,20 +30,20 @@ export default function DocumentDetailPage() {
       {error ? <p className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
       {document ? (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[0.8fr_1.2fr]">
-          <section className="rounded-lg border border-study-line bg-white p-6">
+          <section className="rounded-lg border border-study-line bg-white p-5 sm:p-6">
             <span className={`rounded border px-2 py-1 text-xs font-semibold uppercase ${statusClass(document.status)}`}>{document.status}</span>
             <dl className="mt-6 space-y-4 text-sm">
-              <div><dt className="font-medium text-slate-500">Original file</dt><dd className="mt-1 text-study-navy">{document.original_filename}</dd></div>
+              <div><dt className="font-medium text-slate-500">Original file</dt><dd className="mt-1 break-words text-study-navy">{document.original_filename}</dd></div>
               <div><dt className="font-medium text-slate-500">Pages</dt><dd className="mt-1 text-study-navy">{document.total_pages}</dd></div>
               <div><dt className="font-medium text-slate-500">Chunks</dt><dd className="mt-1 text-study-navy">{document.chunk_count}</dd></div>
             </dl>
-            <div className="mt-6 flex flex-wrap gap-2">
-              <Link href={`/documents/${document.id}/ask`} className="rounded bg-study-navy px-4 py-2 text-sm font-semibold text-white hover:bg-black">Ask AI</Link>
-              <Link href={`/documents/${document.id}/quizzes`} className="rounded border border-study-line px-4 py-2 text-sm font-semibold text-study-navy hover:bg-slate-50">Generate quiz</Link>
-              <Link href={`/documents/${document.id}/flashcards`} className="rounded border border-study-line px-4 py-2 text-sm font-semibold text-study-navy hover:bg-slate-50">Flashcards</Link>
+            <div className="mt-6 grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
+              <Link href={`/documents/${document.id}/ask`} className="rounded bg-study-navy px-4 py-2 text-center text-sm font-semibold text-white hover:bg-black sm:text-left">Ask AI</Link>
+              <Link href={`/documents/${document.id}/quizzes`} className="rounded border border-study-line px-4 py-2 text-center text-sm font-semibold text-study-navy hover:bg-slate-50 sm:text-left">Generate quiz</Link>
+              <Link href={`/documents/${document.id}/flashcards`} className="rounded border border-study-line px-4 py-2 text-center text-sm font-semibold text-study-navy hover:bg-slate-50 sm:text-left">Flashcards</Link>
             </div>
           </section>
-          <section className="rounded-lg border border-study-line bg-white p-6">
+          <section className="rounded-lg border border-study-line bg-white p-5 sm:p-6">
             <h2 className="font-semibold text-study-navy">Source chunk preview</h2>
             <div className="mt-4 space-y-4">
               {document.chunks?.length ? document.chunks.map((chunk) => (

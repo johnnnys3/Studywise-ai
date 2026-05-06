@@ -44,12 +44,12 @@ export default function ProgressPage() {
             {topics.length ? topics.map((topic) => <WeakTopicCard key={topic.id} topic={topic} />) : <p className="text-sm text-slate-500">Submit a quiz to populate weak topics.</p>}
           </div>
         </div>
-        <div className="rounded-lg border border-study-line bg-white p-6">
+        <div className="rounded-lg border border-study-line bg-white p-5 sm:p-6">
           <h2 className="font-semibold text-study-navy">Review recommendations</h2>
           <div className="mt-4 space-y-3">
             {recommendations.length ? recommendations.map((recommendation) => (
               <article key={recommendation.topic} className="rounded border border-study-line bg-slate-50 p-4">
-                <p className="text-sm font-semibold text-study-navy">{recommendation.topic}</p>
+                <p className="break-words text-sm font-semibold text-study-navy">{recommendation.topic}</p>
                 <p className="mt-1 text-sm leading-6 text-slate-600">{recommendation.message}</p>
               </article>
             )) : <p className="text-sm text-slate-500">No recommendations yet.</p>}

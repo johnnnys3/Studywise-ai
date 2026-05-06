@@ -42,8 +42,8 @@ function LoginForm() {
   }
 
   return (
-    <main className="grid min-h-screen place-items-center bg-study-surface px-5">
-      <form onSubmit={submit} className="w-full max-w-md rounded-lg border border-study-line bg-white p-8">
+    <main className="grid min-h-screen place-items-center bg-study-surface px-4 py-8 sm:px-5">
+      <form onSubmit={submit} className="w-full max-w-md rounded-lg border border-study-line bg-white p-6 sm:p-8">
         <Link href="/" className="text-sm font-semibold text-study-navy">StudyWise AI</Link>
         <h1 className="mt-6 text-3xl font-semibold text-study-navy">Log in</h1>
         <p className="mt-2 text-sm text-slate-600">Access your documents, quizzes, and progress.</p>
