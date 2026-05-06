@@ -68,19 +68,44 @@ export function AppShell({ children, title }: { children: React.ReactNode; title
 
       <div className="lg:pl-64">
         <header className="sticky top-0 z-10 border-b border-study-line bg-white/95 backdrop-blur">
-          <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5">
-            <h1 className="text-lg font-semibold text-study-navy">{title}</h1>
+          <div className="mx-auto flex min-h-14 max-w-7xl items-center justify-between gap-3 px-4 py-2 sm:px-5 lg:h-16 lg:py-0">
+            <div className="flex min-w-0 items-center gap-3">
+              <Link href="/" className="grid h-9 w-9 shrink-0 place-items-center rounded bg-study-navy text-white lg:hidden">
+                <GraduationCap size={19} />
+              </Link>
+              <h1 className="min-w-0 truncate text-base font-semibold text-study-navy sm:text-lg">{title}</h1>
+            </div>
             <button
               type="button"
               onClick={logout}
-              className="inline-flex items-center gap-2 rounded border border-study-line px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+              className="inline-flex shrink-0 items-center gap-2 rounded border border-study-line px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
             >
               <LogOut size={16} />
-              Logout
+              <span className="hidden sm:inline">Logout</span>
             </button>
           </div>
+          <nav className="flex gap-2 overflow-x-auto border-t border-study-line px-4 py-2 sm:px-5 lg:hidden">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`inline-flex shrink-0 items-center gap-2 rounded border px-3 py-2 text-sm font-medium ${
+                    active
+                      ? "border-slate-200 bg-slate-100 text-study-navy"
+                      : "border-study-line bg-white text-slate-600 hover:bg-slate-50 hover:text-study-navy"
+                  }`}
+                >
+                  <Icon size={16} strokeWidth={1.7} />
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
         </header>
-        <main className="mx-auto max-w-7xl px-5 py-8">{children}</main>
+        <main className="mx-auto max-w-7xl px-4 py-6 sm:px-5 sm:py-8">{children}</main>
       </div>
     </div>
   );

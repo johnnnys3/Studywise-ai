@@ -40,7 +40,7 @@ export default function DashboardPage() {
         <StatCard label="Weak topics" value={summary?.weak_topic_count ?? 0} note="Below target accuracy" />
       </section>
       <section className="mt-10">
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-xl font-semibold text-study-navy">Recent documents</h2>
           <Link href="/documents" className="text-sm font-semibold text-study-navy">View all</Link>
         </div>

@@ -10,8 +10,14 @@ import type {
   WeakTopic,
 } from "@/types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 const TOKEN_KEY = "studywise_token";
+
+function getApiUrl(): string {
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  return "/api/v1";
+}
 
 export function getToken(): string | null {
   if (typeof window === "undefined") return null;
@@ -36,7 +42,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  const response = await fetch(`${API_URL}${path}`, { ...options, headers });
+  let response: Response;
+  try {
+    response = await fetch(`${getApiUrl()}${path}`, { ...options, headers });
+  } catch {
+    throw new Error("Could not reach the backend. Check that the API server and Next.js proxy are running.");
+  }
   if (!response.ok) {
     let message = "Request failed.";
     try {
