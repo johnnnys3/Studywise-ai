@@ -62,3 +62,17 @@
 - always respond with clear & concise messages
 - use plain English when explaining to the User
 - avoid long sentences, complex words, or long paragraphs
+
+## Agent skills
+
+### Issue tracker
+
+Issues and PRDs are tracked as GitHub issues on `johnnnys3/Studywise-ai` via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five canonical triage roles (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context — `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
