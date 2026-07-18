@@ -44,7 +44,26 @@ def retrieve_chunks(user_id: str, document_id: str, question: str, top_k: int = 
     deduped = _dedupe(fused)
     reranked = _rerank(question, deduped)
     _record_retrieval_trace(user_id, document_id, question, queries, reranked, page_filter)
-    return reranked[: min(top_k, len(reranked))]
+    results = reranked[: min(top_k, len(reranked))]
+    if _is_out_of_scope(results):
+        return []
+    return results
+
+
+# Cross-encoder logits below this are treated as "not actually about the
+# question" rather than merely low-ranked, so the caller can refuse instead
+# of answering from irrelevant chunks. Only applied when the cross-encoder
+# loaded; without it there's no calibrated signal to gate on.
+RELEVANCE_THRESHOLD = -5.0
+
+
+def _is_out_of_scope(chunks: list[dict[str, Any]]) -> bool:
+    if not chunks:
+        return False
+    top_score = chunks[0].get("cross_encoder_score")
+    if top_score is None:
+        return False
+    return float(top_score) < RELEVANCE_THRESHOLD
 
 
 def rewrite_query(question: str) -> list[str]:

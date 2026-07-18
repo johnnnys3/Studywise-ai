@@ -2,12 +2,9 @@
 
 Runs the fixed question set in tests/fixtures/rag_eval_set.json against a
 synthetic multi-page document and checks the pipeline meets baseline
-quality bars for retrieval, citations, and groundedness.
-
-refusal_accuracy is measured and printed but not asserted: the current
-local (no-AI-key) answer fallback always answers from whatever chunks were
-retrieved and never declines, so it's a known gap rather than a regression
-this test should fail on. See the printed report for the current value.
+quality bars for retrieval, citations, groundedness, and refusal on
+out-of-scope questions (retriever.py gates on the cross-encoder's top
+relevance score; see RELEVANCE_THRESHOLD).
 """
 
 from pathlib import Path
@@ -45,3 +42,4 @@ def test_rag_eval_meets_baseline_quality_bars(tmp_path) -> None:
     assert metrics["retrieval_accuracy"] >= 0.8
     assert metrics["citation_coverage"] >= 0.8
     assert metrics["answer_groundedness"] >= 0.6
+    assert metrics["refusal_accuracy"] >= 0.8
