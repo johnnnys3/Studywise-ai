@@ -109,6 +109,7 @@ def _candidate_items_from_chunks(chunks: list[dict[str, Any]]) -> list[dict[str,
                     "answer": answer,
                     "source_page": chunk["page_number"],
                     "source_chunk_id": chunk.get("id", ""),
+                    "topic": chunk.get("section_title"),
                 }
             )
     return items

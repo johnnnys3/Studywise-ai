@@ -22,7 +22,7 @@ def extract_chunk_propositions(chunk: dict[str, Any], max_items: int = 5) -> lis
                 "chunk_id": chunk["id"],
                 "page_number": chunk.get("page_number", chunk.get("page_start", 1)),
                 "section_title": chunk.get("section_title"),
-                "topic": _topic_from_statement(proposition),
+                "topic": chunk.get("section_title") or _topic_from_statement(proposition),
                 "statement": proposition,
                 "content_type": _classify_statement(proposition, chunk.get("content_type")),
                 "quality_score": _quality_score(proposition),
