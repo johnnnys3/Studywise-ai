@@ -46,7 +46,7 @@ def retrieve_chunks(user_id: str, document_id: str, question: str, top_k: int = 
     reranked = _rerank(question, deduped)
     _record_retrieval_trace(user_id, document_id, question, queries, reranked, page_filter)
     results = reranked[: min(top_k, len(reranked))]
-    if _is_out_of_scope(results):
+    if not _is_broad_summary_question(question) and _is_out_of_scope(results):
         return []
     return results
 
@@ -56,6 +56,21 @@ def retrieve_chunks(user_id: str, document_id: str, question: str, top_k: int = 
 # of answering from irrelevant chunks. Only applied when the cross-encoder
 # loaded; without it there's no calibrated signal to gate on.
 RELEVANCE_THRESHOLD = -5.0
+
+
+# Whole-document meta questions (summaries, review guidance) don't concentrate
+# relevance onto any single chunk, so the cross-encoder's per-chunk score is not
+# a meaningful signal for them. Retrieval still ran and returned real chunks
+# from the document; only the out-of-scope gate is skipped for these.
+BROAD_QUESTION_PATTERN = re.compile(
+    r"\b(summar(y|ize|ise)|main idea|main topic|overview|key points?|"
+    r"tl;?dr|recap|what should i (review|study|focus on)|review first)\b",
+    re.IGNORECASE,
+)
+
+
+def _is_broad_summary_question(question: str) -> bool:
+    return bool(BROAD_QUESTION_PATTERN.search(question))
 
 
 def _is_out_of_scope(chunks: list[dict[str, Any]]) -> bool:
