@@ -1,0 +1,66 @@
+[
+  {
+    "id": "mitochondria-energy",
+    "question": "Which organelle produces most of a cell's energy through cellular respiration?",
+    "answerable": true,
+    "expected_page": 1,
+    "expected_keywords": ["mitochondria", "atp"],
+    "citation_required": true
+  },
+  {
+    "id": "photosynthesis-location",
+    "question": "Where does photosynthesis take place in a plant cell?",
+    "answerable": true,
+    "expected_page": 2,
+    "expected_keywords": ["chloroplast"],
+    "citation_required": true
+  },
+  {
+    "id": "dna-storage",
+    "question": "What molecule stores a cell's genetic information and where is it kept?",
+    "answerable": true,
+    "expected_page": 3,
+    "expected_keywords": ["dna", "nucleus"],
+    "citation_required": true
+  },
+  {
+    "id": "ribosome-role",
+    "question": "What is the role of ribosomes in a cell?",
+    "answerable": true,
+    "expected_page": 3,
+    "expected_keywords": ["ribosome", "protein"],
+    "citation_required": true
+  },
+  {
+    "id": "decomposer-role",
+    "question": "What role do decomposers play in an ecosystem?",
+    "answerable": true,
+    "expected_page": 4,
+    "expected_keywords": ["decompos"],
+    "citation_required": true
+  },
+  {
+    "id": "energy-flow",
+    "question": "How does energy flow from producers to consumers in an ecosystem?",
+    "answerable": true,
+    "expected_page": 4,
+    "expected_keywords": ["producer", "consumer"],
+    "citation_required": true
+  },
+  {
+    "id": "out-of-scope-geography",
+    "question": "What is the capital of France?",
+    "answerable": false,
+    "expected_page": null,
+    "expected_keywords": [],
+    "citation_required": false
+  },
+  {
+    "id": "out-of-scope-games",
+    "question": "Explain the rules of chess.",
+    "answerable": false,
+    "expected_page": null,
+    "expected_keywords": [],
+    "citation_required": false
+  }
+]
