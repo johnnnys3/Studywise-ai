@@ -1,9 +1,12 @@
+import logging
 import re
 from typing import Any
 
 from app.prompts.rag_prompts import QUIZ_GENERATION_SYSTEM_PROMPT
 from app.services.llm_service import create_structured_response, is_ai_configured
 from app.storage import store
+
+_logger = logging.getLogger(__name__)
 
 
 _TOPIC_STOPWORDS = {
@@ -223,8 +226,20 @@ def _generate_ai_questions_until_count(
             break
         raw_payloads = _generate_ai_questions(chunks, remaining, difficulty, exclude_questions=seen_questions)
         if not raw_payloads:
+            _logger.warning(
+                "AI quiz generation returned no usable questions for this attempt (requested %d, have %d so far).",
+                remaining,
+                len(collected),
+            )
             continue
-        for payload in _validate_question_payloads(raw_payloads, chunks, difficulty):
+        valid_batch = _validate_question_payloads(raw_payloads, chunks, difficulty)
+        if len(valid_batch) < len(raw_payloads):
+            _logger.warning(
+                "AI returned %d question(s) but only %d passed validation (duplicate/generic/malformed filtering).",
+                len(raw_payloads),
+                len(valid_batch),
+            )
+        for payload in valid_batch:
             if len(collected) >= question_count:
                 break
             question_key = str(payload["question"]).lower()
@@ -232,6 +247,13 @@ def _generate_ai_questions_until_count(
                 continue
             seen_questions.add(question_key)
             collected.append(payload)
+    if len(collected) < question_count:
+        _logger.warning(
+            "AI quiz generation produced only %d/%d requested questions after %d attempts; backfilling with local generator.",
+            len(collected),
+            question_count,
+            max_attempts,
+        )
     return collected
 
 
@@ -537,6 +559,11 @@ def _create_quiz_json_with_retry(system_instructions: str, user_input: str, sche
         try:
             return create_structured_response(system_instructions, user_input, "studywise_quiz", schema)
         except Exception:
+            _logger.warning(
+                "AI quiz generation call failed (attempt %d/2); falling back to local generator if this exhausts retries.",
+                attempt + 1,
+                exc_info=True,
+            )
             if attempt == 1:
                 return None
     return None
