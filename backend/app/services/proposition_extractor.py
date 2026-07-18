@@ -59,23 +59,30 @@ def _is_atomic_study_statement(sentence: str) -> bool:
     return bool(re.search(r"\b(is|are|means|refers|uses|requires|causes|helps|allows|improves|includes|consists|depends|leads)\b", lowered))
 
 
+_TOPIC_STOPWORDS = {
+    "which", "there", "their", "about", "because", "these", "those", "study",
+    "material", "document", "during", "these", "other", "another", "several",
+    "various", "within", "using", "called", "primarily", "essential", "critical",
+    "directly", "indirectly", "similarly", "conversely", "additionally",
+    "therefore", "however", "although", "typically", "usually", "including",
+    "specifically", "immediately", "beyond", "through", "before", "after",
+    "between", "against", "while", "where", "when", "then", "than", "also",
+    "such", "some", "does", "each", "every", "being", "become", "becomes",
+    "first", "second", "third", "result", "resulting", "overall", "occurs",
+    "occur", "process", "processes",
+}
+
+
 def _topic_from_statement(statement: str) -> str:
-    stop_terms = {
-        "which",
-        "there",
-        "their",
-        "about",
-        "because",
-        "these",
-        "those",
-        "study",
-        "material",
-        "document",
-    }
-    for word in re.findall(r"[A-Za-z][A-Za-z-]{4,}", statement):
-        if word.lower() not in stop_terms:
-            return word.strip("-").title()
-    return "Core Concepts"
+    candidates = [
+        word.strip("-").title()
+        for word in re.findall(r"[A-Za-z][A-Za-z-]{4,}", statement)
+        if word.lower() not in _TOPIC_STOPWORDS
+    ]
+    if not candidates:
+        return "Core Concepts"
+    long_candidates = [word for word in candidates if len(word) >= 7]
+    return (long_candidates or candidates)[0]
 
 
 def _classify_statement(statement: str, fallback: Any) -> str:

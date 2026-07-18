@@ -6,13 +6,28 @@ from app.services.llm_service import create_structured_response, is_ai_configure
 from app.storage import store
 
 
+_TOPIC_STOPWORDS = {
+    "which", "there", "their", "about", "should", "would", "could", "because", "material",
+    "during", "these", "those", "other", "another", "several", "various", "within", "using",
+    "called", "primarily", "essential", "critical", "directly", "indirectly", "similarly",
+    "conversely", "additionally", "therefore", "however", "although", "typically", "usually",
+    "including", "specifically", "immediately", "beyond", "through", "before", "after",
+    "between", "against", "while", "where", "when", "then", "than", "also", "such", "some",
+    "does", "each", "every", "being", "become", "becomes", "first", "second", "third", "result",
+    "resulting", "process", "processes",
+}
+
+
 def _topic_from_text(text: str) -> str:
-    words = [
-        word
+    candidates = [
+        word.strip("-").title()
         for word in re.findall(r"[A-Za-z][a-zA-Z-]{4,}", text)
-        if word.lower() not in {"which", "there", "their", "about", "should", "would", "could", "because", "material"}
+        if word.lower() not in _TOPIC_STOPWORDS
     ]
-    return words[0].strip("-").title() if words else "Core Concepts"
+    if not candidates:
+        return "Core Concepts"
+    long_candidates = [word for word in candidates if len(word) >= 7]
+    return (long_candidates or candidates)[0]
 
 
 def generate_quiz(user_id: str, document_id: str, question_count: int, difficulty: str) -> dict[str, Any]:
@@ -162,11 +177,16 @@ def _shorten_option(sentence: str) -> str:
 
 
 def _build_distractors(correct_answer: str, candidates: list[dict[str, Any]], current_index: int) -> list[str]:
-    distractors = [
-        item["answer"]
-        for index, item in enumerate(candidates)
-        if index != current_index and item["answer"] != correct_answer
-    ][:3]
+    other_indexes = [index for index in range(len(candidates)) if index != current_index]
+    rotated_indexes = other_indexes[current_index % max(len(other_indexes), 1):] + other_indexes[: current_index % max(len(other_indexes), 1)]
+    distractors = []
+    for index in rotated_indexes:
+        answer = candidates[index]["answer"]
+        if answer == correct_answer or answer in distractors:
+            continue
+        distractors.append(answer)
+        if len(distractors) == 3:
+            break
 
     generic_distractors = [
         "The material says this topic is not covered in the selected document.",
