@@ -6,6 +6,9 @@
 - **My skill level:** [beginner / intermediate / expert]
 - **Stack:** Next.js, TypeScript, Tailwind CSS, FastAPI, Python, local JSON persistence for the MVP adapter, PDF/TXT parsing, optional Gemini API generation by default, optional OpenAI Responses API generation, and deterministic local RAG fallbacks. PRD target stack includes PostgreSQL, ChromaDB, and cloud LLM generation.
 
+## ML Experiments
+- `ml/chunk-relevance-classifier/` — DistilBERT fine-tuned as a binary (question, chunk) relevance classifier, trained on StudyWise's own `rag_traces` retrieval logs. Not wired into the live retrieval pipeline yet; see `ml/chunk-relevance-classifier/model_card.md` for training data, held-out metrics, and limitations. Model pushed to [huggingface.co/Johnnnys3/studywise-chunk-relevance-classifier](https://huggingface.co/Johnnnys3/studywise-chunk-relevance-classifier).
+
 ## Design Reference
 - **Stitch project:** https://stitch.withgoogle.com/projects/5299216589319221533
 - **Design system:** Academic Precision.
