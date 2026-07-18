@@ -140,19 +140,19 @@ def _compress_chunk_text(chunk: dict[str, Any], max_chars: int = 1800) -> str:
 
 
 def _compress_relevant_sentences(query_terms: set[str], retrieved_chunks: list[dict[str, Any]]) -> list[str]:
-    selected: list[str] = []
+    scored: list[tuple[int, str]] = []
     for chunk in retrieved_chunks:
-        sentences = re.split(r"(?<=[.!?])\s+|\n+", chunk["chunk_text"])
-        scored = [
-            (len(query_terms.intersection(tokenize(sentence))), sentence.strip())
-            for sentence in sentences
-            if sentence.strip()
-        ]
-        for _, sentence in sorted(scored, key=lambda item: item[0], reverse=True):
-            if sentence and sentence not in selected:
-                selected.append(sentence)
-            if len(selected) >= 5:
-                return selected
+        for sentence in re.split(r"(?<=[.!?])\s+|\n+", chunk["chunk_text"]):
+            sentence = sentence.strip()
+            if sentence:
+                scored.append((len(query_terms.intersection(tokenize(sentence))), sentence))
+
+    selected: list[str] = []
+    for _, sentence in sorted(scored, key=lambda item: item[0], reverse=True):
+        if sentence not in selected:
+            selected.append(sentence)
+        if len(selected) >= 5:
+            break
     return selected
 
 
