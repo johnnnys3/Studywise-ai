@@ -1,10 +1,20 @@
+import math
 import re
+from collections import Counter
 from typing import Any, Iterator
 
 from app.prompts.rag_prompts import RAG_ANSWER_SYSTEM_PROMPT
 from app.services.llm_service import create_text_response, is_ai_configured, stream_text_response
 from app.services.retriever import retrieve_chunks, tokenize
 from app.storage import store
+
+
+# How much a sentence's parent-chunk relevance (from retrieval ranking) can
+# outweigh its raw keyword overlap when picking sentences for the local
+# answer. Keyword overlap alone can't tell a topical match ("ribosomes")
+# from a coincidental one ("cell...role"); chunk relevance can, since it
+# already reflects the cross-encoder's semantic judgment.
+CHUNK_RELEVANCE_WEIGHT = 3.0
 
 
 def build_answer(user_id: str, document_id: str, question: str) -> dict[str, Any]:
@@ -140,12 +150,34 @@ def _compress_chunk_text(chunk: dict[str, Any], max_chars: int = 1800) -> str:
 
 
 def _compress_relevant_sentences(query_terms: set[str], retrieved_chunks: list[dict[str, Any]]) -> list[str]:
-    scored: list[tuple[int, str]] = []
+    if not retrieved_chunks:
+        return []
+
+    entries: list[tuple[str, list[str], float]] = []
     for chunk in retrieved_chunks:
+        relevance = _chunk_relevance_signal(chunk)
         for sentence in re.split(r"(?<=[.!?])\s+|\n+", chunk["chunk_text"]):
             sentence = sentence.strip()
             if sentence:
-                scored.append((len(query_terms.intersection(tokenize(sentence))), sentence))
+                entries.append((sentence, tokenize(sentence), relevance))
+
+    lowest = min(relevance for _, _, relevance in entries)
+    highest = max(relevance for _, _, relevance in entries)
+    spread = highest - lowest or 1.0
+
+    document_frequency: Counter[str] = Counter()
+    for _, tokens, _ in entries:
+        document_frequency.update(set(tokens))
+    total_sentences = len(entries)
+
+    def idf(term: str) -> float:
+        return math.log((total_sentences + 1) / (document_frequency[term] + 1)) + 1
+
+    scored: list[tuple[float, str]] = []
+    for sentence, tokens, relevance in entries:
+        keyword_score = sum(idf(term) for term in query_terms.intersection(tokens))
+        chunk_relevance = (relevance - lowest) / spread
+        scored.append((keyword_score + chunk_relevance * CHUNK_RELEVANCE_WEIGHT, sentence))
 
     selected: list[str] = []
     for _, sentence in sorted(scored, key=lambda item: item[0], reverse=True):
@@ -154,6 +186,12 @@ def _compress_relevant_sentences(query_terms: set[str], retrieved_chunks: list[d
         if len(selected) >= 5:
             break
     return selected
+
+
+def _chunk_relevance_signal(chunk: dict[str, Any]) -> float:
+    if "cross_encoder_score" in chunk:
+        return float(chunk["cross_encoder_score"])
+    return float(chunk.get("score", 0.0))
 
 
 def _source_label(chunk: dict[str, Any]) -> str:
