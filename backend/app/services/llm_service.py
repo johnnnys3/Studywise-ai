@@ -197,7 +197,7 @@ def _to_gemini_schema(schema: dict[str, Any]) -> dict[str, Any]:
     }
     converted: dict[str, Any] = {}
     for key, value in schema.items():
-        if key in {"additionalProperties", "minItems", "maxItems"}:
+        if key == "additionalProperties":
             continue
         if key == "type" and isinstance(value, str):
             converted[key] = type_map.get(value, value)

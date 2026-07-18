@@ -215,21 +215,29 @@ def _rotate_options(options: list[str], offset: int) -> list[str]:
     return clean_options[offset:] + clean_options[:offset]
 
 
+_MAX_QUESTIONS_PER_AI_CALL = 4
+
+
 def _generate_ai_questions_until_count(
-    chunks: list[dict[str, Any]], question_count: int, difficulty: str, max_attempts: int = 3
+    chunks: list[dict[str, Any]], question_count: int, difficulty: str, max_attempts: int | None = None
 ) -> list[dict[str, Any]]:
+    batches_needed = (question_count + _MAX_QUESTIONS_PER_AI_CALL - 1) // _MAX_QUESTIONS_PER_AI_CALL
+    if max_attempts is None:
+        max_attempts = max(3, batches_needed + 1)
     collected: list[dict[str, Any]] = []
     seen_questions: set[str] = set()
     for _ in range(max_attempts):
         remaining = question_count - len(collected)
         if remaining <= 0:
             break
-        raw_payloads = _generate_ai_questions(chunks, remaining, difficulty, exclude_questions=seen_questions)
+        batch_count = min(remaining, _MAX_QUESTIONS_PER_AI_CALL)
+        raw_payloads = _generate_ai_questions(chunks, batch_count, difficulty, exclude_questions=seen_questions)
         if not raw_payloads:
             _logger.warning(
-                "AI quiz generation returned no usable questions for this attempt (requested %d, have %d so far).",
-                remaining,
+                "AI quiz generation returned no usable questions for this batch (requested %d, have %d/%d so far).",
+                batch_count,
                 len(collected),
+                question_count,
             )
             continue
         valid_batch = _validate_question_payloads(raw_payloads, chunks, difficulty)
