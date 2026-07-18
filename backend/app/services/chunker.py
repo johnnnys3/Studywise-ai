@@ -187,6 +187,8 @@ def _overlap_blocks(blocks: list[dict[str, Any]], overlap: int) -> list[dict[str
 
 def _looks_like_heading(text: str) -> bool:
     normalized = text.strip()
+    if normalized.startswith(("•", "◦", "‣", "➢", "-", "*")):
+        return False
     words = normalized.split()
     if not 1 <= len(words) <= 12:
         return False
@@ -199,7 +201,39 @@ def _looks_like_heading(text: str) -> bool:
         return True
     if normalized.istitle() and len(words) <= 8:
         return True
-    return len(words) <= 6 and not re.search(r"[.,;:!?]", normalized)
+    if len(words) <= 6 and not re.search(r"[.,;:!?]", normalized):
+        return not _looks_like_prose_fragment(words)
+    return False
+
+
+# Auxiliary/copula verbs and trailing conjunctions/prepositions that mark a
+# short lowercase line as a mid-sentence prose fragment (e.g. from a PDF
+# where each verse or wrapped line is its own paragraph) rather than a
+# genuine standalone heading like "results and discussion".
+_AUXILIARY_VERBS = {
+    "is", "are", "was", "were", "am", "be", "been", "being",
+    "has", "have", "had", "do", "does", "did",
+    "will", "would", "can", "could", "shall", "should", "may", "might", "must",
+}
+_LEADING_OR_TRAILING_STOPWORDS = {
+    "a", "an", "the", "and", "or", "but", "as", "if", "so", "because",
+    "of", "in", "on", "at", "to", "with", "for", "from", "by",
+}
+_PRONOUNS = {
+    "i", "you", "he", "she", "it", "we", "they",
+    "me", "him", "us", "them",
+    "my", "your", "his", "her", "its", "our", "their",
+    "this", "that", "these", "those",
+}
+
+
+def _looks_like_prose_fragment(words: list[str]) -> bool:
+    cleaned = [word.strip("()\"'.,:;").lower() for word in words]
+    if not cleaned:
+        return False
+    if any(word in _AUXILIARY_VERBS or word in _PRONOUNS for word in cleaned):
+        return True
+    return cleaned[0] in _LEADING_OR_TRAILING_STOPWORDS or cleaned[-1] in _LEADING_OR_TRAILING_STOPWORDS
 
 
 def _normalize_heading(text: str) -> str:

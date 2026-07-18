@@ -1,4 +1,4 @@
-from app.services.chunker import chunk_text, semantic_chunk_pages
+from app.services.chunker import _looks_like_heading, chunk_text, semantic_chunk_pages
 
 
 def test_chunk_text_creates_overlapping_chunks() -> None:
@@ -22,3 +22,17 @@ def test_lowercase_standalone_line_is_detected_as_heading() -> None:
     assert chunks[0].section_title == "results and discussion"
     assert chunks[0].chunk_text.startswith("The experiment showed")
     assert chunks[1].section_title == "conclusion"
+
+
+def test_short_prose_line_fragment_is_not_detected_as_heading() -> None:
+    # Real line-wrap fragments pulled from a PDF where each verse line is its
+    # own paragraph -- these are mid-sentence prose, not section headings.
+    assert _looks_like_heading("wilderness rejoices and blossoms as the") is False
+    assert _looks_like_heading('"Hindrances are friendly" and obstacles') is False
+    assert _looks_like_heading("(Imagination) and is given power and") is False
+    assert _looks_like_heading("•My seeming impossible good now comes") is False
+    assert _looks_like_heading("and successful men who desert their") is False
+    assert _looks_like_heading("suddenly it blossoms as the rose") is False
+    assert _looks_like_heading("of the situation upon her subconscious") is False
+    assert _looks_like_heading("➢ seeing obstacles") is False
+    assert _looks_like_heading("released and reaches me in great") is False
