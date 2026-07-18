@@ -28,6 +28,9 @@ frontend/.env.local
 backend/.env
 backend/.env copy*.example
 
+# Local git worktrees (scratch checkouts, not part of the tree)
+.claude/worktrees/
+
 # ML training artifacts
 ml/chunk-relevance-classifier/model/
 
