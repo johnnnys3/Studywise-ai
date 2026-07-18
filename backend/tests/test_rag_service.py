@@ -1,4 +1,4 @@
-from app.services.rag_service import _compress_relevant_sentences
+from app.services.rag_service import _compress_relevant_sentences, _split_sentences
 
 
 def test_compress_relevant_sentences_ranks_globally_not_per_chunk() -> None:
@@ -46,3 +46,24 @@ def test_compress_relevant_sentences_prefers_topical_chunk_over_keyword_coincide
     selected = _compress_relevant_sentences(query_terms, chunks)
 
     assert selected[0].startswith("Ribosomes read messenger RNA")
+
+
+def test_split_sentences_does_not_break_on_pdf_line_wraps() -> None:
+    # PDF text extraction wraps lines with single "\n" mid-sentence; only
+    # "\n\n" (or more) marks an actual paragraph break, and even that
+    # shouldn't fragment a sentence that has no terminal punctuation yet.
+    text = "Ribosomes read messenger RNA copied from DNA and assemble\namino acids into proteins, a process called translation."
+
+    assert _split_sentences(text) == [
+        "Ribosomes read messenger RNA copied from DNA and assemble amino acids into proteins, a process called translation."
+    ]
+
+
+def test_split_sentences_still_splits_on_sentence_boundaries() -> None:
+    text = "First sentence here. Second sentence follows!\nThird one wraps\nacross lines?"
+
+    assert _split_sentences(text) == [
+        "First sentence here.",
+        "Second sentence follows!",
+        "Third one wraps across lines?",
+    ]

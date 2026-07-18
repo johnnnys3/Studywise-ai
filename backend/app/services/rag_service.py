@@ -131,17 +131,24 @@ def _format_context_block(chunk: dict[str, Any]) -> str:
     )
 
 
+def _split_sentences(text: str) -> list[str]:
+    # Collapse whitespace first, including single line-wrap newlines from
+    # PDF-extracted text, so a wrapped line doesn't get treated as a
+    # sentence boundary and fragment a real sentence mid-clause.
+    normalized = re.sub(r"\s+", " ", text).strip()
+    if not normalized:
+        return []
+    return [sentence.strip() for sentence in re.split(r"(?<=[.!?])\s+", normalized) if sentence.strip()]
+
+
 def _compress_chunk_text(chunk: dict[str, Any], max_chars: int = 1800) -> str:
     text = str(chunk["chunk_text"]).strip()
     if len(text) <= max_chars:
         return text
-    sentences = re.split(r"(?<=[.!?])\s+|\n+", text)
+    sentences = _split_sentences(text)
     kept: list[str] = []
     total = 0
     for sentence in sentences:
-        sentence = sentence.strip()
-        if not sentence:
-            continue
         if total + len(sentence) > max_chars:
             break
         kept.append(sentence)
@@ -156,10 +163,8 @@ def _compress_relevant_sentences(query_terms: set[str], retrieved_chunks: list[d
     entries: list[tuple[str, list[str], float]] = []
     for chunk in retrieved_chunks:
         relevance = _chunk_relevance_signal(chunk)
-        for sentence in re.split(r"(?<=[.!?])\s+|\n+", chunk["chunk_text"]):
-            sentence = sentence.strip()
-            if sentence:
-                entries.append((sentence, tokenize(sentence), relevance))
+        for sentence in _split_sentences(chunk["chunk_text"]):
+            entries.append((sentence, tokenize(sentence), relevance))
 
     lowest = min(relevance for _, _, relevance in entries)
     highest = max(relevance for _, _, relevance in entries)

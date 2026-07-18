@@ -41,5 +41,5 @@ def test_rag_eval_meets_baseline_quality_bars(tmp_path) -> None:
 
     assert metrics["retrieval_accuracy"] >= 0.8
     assert metrics["citation_coverage"] >= 0.8
-    assert metrics["answer_groundedness"] >= 0.6
+    assert metrics["answer_groundedness"] >= 0.8
     assert metrics["refusal_accuracy"] >= 0.8
