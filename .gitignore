@@ -28,6 +28,9 @@ frontend/.env.local
 backend/.env
 backend/.env copy*.example
 
+# ML training artifacts
+ml/chunk-relevance-classifier/model/
+
 # Logs
 *.log
 npm-debug.log*
