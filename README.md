@@ -31,7 +31,7 @@ Answers should be grounded in uploaded documents and include source references, 
 - Chroma-ready vector storage with deterministic local embeddings for development
 - Hybrid retrieval with query rewriting, keyword search, vector search, proposition search, fusion, reranking, dedupe, and page filters
 - Citation-backed document Q&A
-- Quiz generation from uploaded materials with strict JSON validation
+- Quiz generation from uploaded materials with difficulty levels (easy/medium/hard), strict JSON validation, exact-count enforcement with retry-and-backfill, and a local template fallback when no AI provider is configured or available
 - Quiz attempts and scoring
 - Weak topic tracking with source pages, chunk IDs, difficulty, and cognitive skill metadata
 - Basic analytics, RAG traces, and AI evaluation metrics
@@ -351,7 +351,7 @@ http://localhost:3000
 ### Current MVP Implementation Note
 This implementation uses local JSON persistence for MVP data and ChromaDB for local vector indexing when enabled.
 
-If `GEMINI_API_KEY` is set in `backend/.env`, the backend uses Gemini for citation-backed answers and structured quiz generation. This is the default local setup and works with the Gemini free tier, subject to rate limits.
+If `GEMINI_API_KEY` is set in `backend/.env`, the backend uses Gemini for citation-backed answers and structured quiz generation. This is the default local setup and works with the Gemini free tier, subject to rate limits. Note that the free tier can be limited to as few as ~20 requests/day for a given model, which is easy to exhaust during active development/testing; if AI calls start failing with `429 RESOURCE_EXHAUSTED`, the app falls back to local retrieval/template generation until the quota resets.
 
 If no Gemini key is set, the app can optionally use OpenAI when `AI_PROVIDER=openai` and `OPENAI_API_KEY` are configured. If no AI key is set, the app falls back to local retrieval and template quiz generation.
 
@@ -376,7 +376,7 @@ Expected environment variables:
 JWT_SECRET=change-this-to-a-long-random-secret
 AI_PROVIDER=gemini
 GEMINI_API_KEY=your_gemini_api_key
-GEMINI_MODEL=gemini-2.5-flash
+GEMINI_MODEL=gemini-flash-latest
 AI_TIMEOUT_SECONDS=45
 CHROMA_ENABLED=true
 CHROMA_DIR=./data/chroma
@@ -442,7 +442,6 @@ StudyWise AI should feel clean, structured, academic, and reliable. The UI shoul
 ### Version 1.1
 - Flashcard generation
 - Better document summaries
-- Difficulty-based quiz generation
 - Topic-based study recommendations
 
 ### Version 1.2
