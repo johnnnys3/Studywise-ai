@@ -31,7 +31,7 @@ Answers should be grounded in uploaded documents and include source references, 
 - Chroma-ready vector storage with deterministic local embeddings for development
 - Hybrid retrieval with query rewriting, keyword search, vector search, proposition search, fusion, reranking, dedupe, and page filters
 - Citation-backed document Q&A
-- Quiz generation from uploaded materials with difficulty levels (easy/medium/hard), strict JSON validation, exact-count enforcement with retry-and-backfill, and a local template fallback when no AI provider is configured or available
+- Quiz generation from uploaded materials with difficulty levels (easy/medium/hard), strict JSON validation, exact-count enforcement with retry-and-backfill, automatic fallback to Groq if the primary AI provider fails, and a local template fallback when no AI provider is configured or available
 - Quiz attempts and scoring
 - Weak topic tracking with source pages, chunk IDs, difficulty, and cognitive skill metadata
 - Basic analytics, RAG traces, and AI evaluation metrics
@@ -82,6 +82,7 @@ Answers should be grounded in uploaded documents and include source references, 
 - PyMuPDF for PDF parsing
 - Gemini API for LLM generation by default
 - OpenAI API as an optional alternate LLM provider
+- Groq API as an automatic fallback provider when the primary provider fails
 - ChromaDB for vector storage
 
 ### Database
@@ -355,6 +356,8 @@ If `GEMINI_API_KEY` is set in `backend/.env`, the backend uses Gemini for citati
 
 If no Gemini key is set, the app can optionally use OpenAI when `AI_PROVIDER=openai` and `OPENAI_API_KEY` are configured. If no AI key is set, the app falls back to local retrieval and template quiz generation.
 
+If `GROQ_API_KEY` is set (free tier available), it is used as an automatic fallback provider: whenever the primary provider (`AI_PROVIDER`) throws, including on Gemini's `429 RESOURCE_EXHAUSTED` quota errors, requests are retried against Groq before falling back to local retrieval/template generation. Groq's structured JSON output (used for quiz generation) only supports strict `json_schema` mode on `openai/gpt-oss-20b` and `openai/gpt-oss-120b`, so `GROQ_MODEL` defaults to `openai/gpt-oss-20b`.
+
 Chroma indexing uses a deterministic local embedding fallback in the MVP, so document processing can work without OpenAI embeddings. For stronger semantic retrieval later, replace the fallback with provider embeddings.
 
 The PRD target remains PostgreSQL, ChromaDB, and cloud LLM generation. The local adapters are intended to be replaced as the product hardens.
@@ -389,6 +392,11 @@ FRONTEND_URL=http://localhost:3000
 OPENAI_API_KEY=
 OPENAI_MODEL=gpt-4o-mini
 OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+
+# Optional Groq provider settings (free tier, used as fallback when AI_PROVIDER fails)
+AI_FALLBACK_PROVIDER=groq
+GROQ_API_KEY=
+GROQ_MODEL=openai/gpt-oss-20b
 ```
 
 Never commit real secrets or API keys.
