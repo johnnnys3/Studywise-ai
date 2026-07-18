@@ -33,12 +33,28 @@ def generate_quiz(user_id: str, document_id: str, question_count: int, difficult
     )
 
     evidence_chunks = _select_quiz_evidence(chunks, question_count, difficulty)
-    question_payloads = _generate_ai_questions(evidence_chunks, question_count, difficulty) if is_ai_configured() else []
-    if not question_payloads:
-        question_payloads = _generate_local_questions(evidence_chunks, question_count, difficulty)
+
+    valid_payloads: list[dict[str, Any]] = []
+    if is_ai_configured():
+        valid_payloads = _generate_ai_questions_until_count(evidence_chunks, question_count, difficulty)
+
+    if len(valid_payloads) < question_count:
+        seen_questions = {str(p["question"]).lower() for p in valid_payloads}
+        local_candidates = _validate_question_payloads(
+            _generate_local_questions(evidence_chunks, question_count * 2, difficulty),
+            evidence_chunks,
+            difficulty,
+        )
+        for payload in local_candidates:
+            if len(valid_payloads) >= question_count:
+                break
+            question_key = str(payload["question"]).lower()
+            if question_key in seen_questions:
+                continue
+            seen_questions.add(question_key)
+            valid_payloads.append(payload)
 
     questions: list[dict[str, Any]] = []
-    valid_payloads = _validate_question_payloads(question_payloads, evidence_chunks, difficulty)
     if not valid_payloads:
         raise ValueError("Quiz generation failed validation. Please try again.")
 
@@ -176,7 +192,35 @@ def _rotate_options(options: list[str], offset: int) -> list[str]:
     return clean_options[offset:] + clean_options[:offset]
 
 
-def _generate_ai_questions(chunks: list[dict[str, Any]], question_count: int, difficulty: str) -> list[dict[str, Any]]:
+def _generate_ai_questions_until_count(
+    chunks: list[dict[str, Any]], question_count: int, difficulty: str, max_attempts: int = 3
+) -> list[dict[str, Any]]:
+    collected: list[dict[str, Any]] = []
+    seen_questions: set[str] = set()
+    for _ in range(max_attempts):
+        remaining = question_count - len(collected)
+        if remaining <= 0:
+            break
+        raw_payloads = _generate_ai_questions(chunks, remaining, difficulty, exclude_questions=seen_questions)
+        if not raw_payloads:
+            continue
+        for payload in _validate_question_payloads(raw_payloads, chunks, difficulty):
+            if len(collected) >= question_count:
+                break
+            question_key = str(payload["question"]).lower()
+            if question_key in seen_questions:
+                continue
+            seen_questions.add(question_key)
+            collected.append(payload)
+    return collected
+
+
+def _generate_ai_questions(
+    chunks: list[dict[str, Any]],
+    question_count: int,
+    difficulty: str,
+    exclude_questions: set[str] | None = None,
+) -> list[dict[str, Any]]:
     selected_chunks = chunks[: min(max(question_count * 2, 4), 12)]
     context = "\n\n".join(
         (
@@ -189,12 +233,19 @@ def _generate_ai_questions(chunks: list[dict[str, Any]], question_count: int, di
     system_instructions = (
         f"{QUIZ_GENERATION_SYSTEM_PROMPT} Each question must have exactly four unique plausible options, "
         "one correct answer copied exactly from options, an educational explanation, difficulty, topic, "
-        "source_page, source_chunk_id, and cognitive_skill. Do not invent source pages or chunk IDs."
+        "source_page, source_chunk_id, and cognitive_skill. Do not invent source pages or chunk IDs. "
+        f"You must return exactly {question_count} questions in the array, no more and no fewer."
+    )
+    exclusion_text = (
+        f"Do not repeat or closely rephrase these already-used questions:\n{chr(10).join(sorted(exclude_questions))}\n\n"
+        if exclude_questions
+        else ""
     )
     user_input = (
         f"Difficulty: {difficulty}\n"
         f"Number of questions: {question_count}\n\n"
         f"Difficulty rules:\n{_difficulty_rules(difficulty)}\n\n"
+        f"{exclusion_text}"
         f"Allowed source_chunk_id values:\n{', '.join(str(chunk.get('id', '')) for chunk in selected_chunks)}\n\n"
         f"Study context:\n{context}"
     )
@@ -205,7 +256,7 @@ def _generate_ai_questions(chunks: list[dict[str, Any]], question_count: int, di
         "properties": {
             "questions": {
                 "type": "array",
-                "minItems": 1,
+                "minItems": question_count,
                 "maxItems": question_count,
                 "items": {
                     "type": "object",
