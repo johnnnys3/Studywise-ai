@@ -25,6 +25,13 @@ export default function DocumentsPage() {
     [documents, query],
   );
 
+  const handleDelete = (documentId: string) => {
+    setError("");
+    api.deleteDocument(documentId)
+      .then(() => setDocuments((current) => current.filter((document) => document.id !== documentId)))
+      .catch((err) => setError(err instanceof Error ? err.message : "Could not delete document."));
+  };
+
   return (
     <AppShell title="Documents">
       <PageHeader
@@ -42,7 +49,9 @@ export default function DocumentsPage() {
       {error ? <p className="mb-6 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
       {filteredDocuments.length ? (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-          {filteredDocuments.map((document) => <DocumentCard key={document.id} document={document} />)}
+          {filteredDocuments.map((document) => (
+            <DocumentCard key={document.id} document={document} onDelete={handleDelete} />
+          ))}
         </div>
       ) : (
         <EmptyState title="No matching documents" description="Upload a readable PDF or TXT file to begin building your study workspace." href="/documents/upload" actionLabel="Upload document" />

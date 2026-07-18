@@ -138,5 +138,15 @@ class JsonStore:
             self._write(data)
             return len(data[table]) < original_count
 
+    def delete_where(self, table: str, **filters: Any) -> list[dict[str, Any]]:
+        with self.lock, self._file_lock():
+            data = self._read()
+            rows = data.get(table, [])
+            removed = [row for row in rows if all(row.get(key) == value for key, value in filters.items())]
+            if removed:
+                data[table] = [row for row in rows if row not in removed]
+                self._write(data)
+            return deepcopy(removed)
+
 
 store = JsonStore()

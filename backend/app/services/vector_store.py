@@ -71,6 +71,16 @@ def query_document_chunks(
     return sorted(hits.values(), key=lambda item: item["vector_score"], reverse=True)
 
 
+def delete_document_chunks(user_id: str, document_id: str) -> None:
+    collection = _collection()
+    if collection is None:
+        return
+    try:
+        collection.delete(where={"$and": [{"user_id": user_id}, {"document_id": document_id}]})
+    except Exception:
+        pass
+
+
 def _collection() -> Any | None:
     settings = get_settings()
     if not settings.chroma_enabled:

@@ -141,6 +141,7 @@ export const api = {
     formData.append("file", file);
     return request<StudyDocument>("/documents", { method: "POST", body: formData });
   },
+  deleteDocument: (documentId: string) => request<void>(`/documents/${documentId}`, { method: "DELETE" }),
   ask: (documentId: string, question: string) =>
     request<AskResponse>(`/documents/${documentId}/ask`, {
       method: "POST",

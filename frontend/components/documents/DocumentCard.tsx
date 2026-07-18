@@ -1,9 +1,15 @@
 import Link from "next/link";
-import { FileText, MessageSquareText, NotebookPen } from "lucide-react";
+import { FileText, MessageSquareText, NotebookPen, Trash2 } from "lucide-react";
 import type { StudyDocument } from "@/types";
 import { formatDate, statusClass } from "@/lib/utils";
 
-export function DocumentCard({ document }: { document: StudyDocument }) {
+export function DocumentCard({
+  document,
+  onDelete,
+}: {
+  document: StudyDocument;
+  onDelete?: (documentId: string) => void;
+}) {
   return (
     <article className="rounded-lg border border-study-line bg-white p-5 sm:p-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -33,6 +39,20 @@ export function DocumentCard({ document }: { document: StudyDocument }) {
           <NotebookPen size={15} />
           Quiz
         </Link>
+        {onDelete ? (
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm(`Delete "${document.title}"? This removes its chunks, quizzes, and chat history.`)) {
+                onDelete(document.id);
+              }
+            }}
+            className="inline-flex items-center justify-center gap-2 rounded border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 sm:justify-start"
+          >
+            <Trash2 size={15} />
+            Delete
+          </button>
+        ) : null}
       </div>
     </article>
   );

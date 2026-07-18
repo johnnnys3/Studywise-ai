@@ -10,7 +10,7 @@ from app.services.chunker import semantic_chunk_pages
 from app.services.document_parser import extract_text
 from app.services.proposition_extractor import extract_chunk_propositions
 from app.services.text_cleaner import remove_repeated_page_artifacts
-from app.services.vector_store import upsert_document_chunks
+from app.services.vector_store import delete_document_chunks, upsert_document_chunks
 from app.storage import store
 
 
@@ -163,6 +163,20 @@ def delete_document(document_id: str, current_user: dict = Depends(get_current_u
     document = store.find("documents", id=document_id, user_id=current_user["id"])
     if not document:
         raise HTTPException(status_code=404, detail="Document not found.")
+
+    user_id = current_user["id"]
+    delete_document_chunks(user_id, document_id)
+    store.delete_where("document_chunks", document_id=document_id, user_id=user_id)
+    store.delete_where("chunk_propositions", document_id=document_id, user_id=user_id)
+    store.delete_where("rag_traces", document_id=document_id, user_id=user_id)
+    store.delete_where("chat_messages", document_id=document_id, user_id=user_id)
+    store.delete_where("flashcards", document_id=document_id, user_id=user_id)
+
+    for quiz in store.delete_where("quizzes", document_id=document_id, user_id=user_id):
+        store.delete_where("quiz_questions", quiz_id=quiz["id"])
+        for attempt in store.delete_where("quiz_attempts", quiz_id=quiz["id"], user_id=user_id):
+            store.delete_where("quiz_answers", attempt_id=attempt["id"])
+
     path = Path(document["file_path"])
     if path.exists():
         path.unlink()
