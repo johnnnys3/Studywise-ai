@@ -3,6 +3,7 @@ import re
 from collections import Counter
 from typing import Any
 
+from app.services.chunk_relevance_classifier import classify_relevance
 from app.services.llm_service import create_structured_response, is_ai_configured
 from app.services.reranker import rerank as cross_encoder_rerank
 from app.services.vector_store import query_document_chunks
@@ -233,7 +234,7 @@ def _rerank(question: str, chunks: list[dict[str, Any]]) -> list[dict[str, Any]]
         score = float(chunk.get("score", 0)) + support_score + content_bonus + proposition_bonus
         reranked.append({**chunk, "score": round(score, 6), "support_score": round(support_score, 6)})
     reranked.sort(key=lambda item: item["score"], reverse=True)
-    return _apply_cross_encoder(question, reranked)
+    return _apply_relevance_classifier(question, _apply_cross_encoder(question, reranked))
 
 
 def _apply_cross_encoder(question: str, chunks: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -256,6 +257,32 @@ def _apply_cross_encoder(question: str, chunks: list[dict[str, Any]]) -> list[di
         normalized_ce = (ce_chunk["cross_encoder_score"] - lowest) / spread
         score = float(chunk["score"]) * 0.4 + normalized_ce * 0.6
         blended.append({**chunk, "score": round(score, 6), "cross_encoder_score": ce_chunk["cross_encoder_score"]})
+    return sorted(blended, key=lambda item: item["score"], reverse=True)
+
+
+# Small blend weight -- the classifier trails a majority-class baseline on
+# raw accuracy (see ml/chunk-relevance-classifier/model_card.md), so it acts
+# as a mild nudge on top of the cross-encoder rather than a strong signal.
+RELEVANCE_CLASSIFIER_WEIGHT = 0.15
+RELEVANCE_CLASSIFIER_CANDIDATES = 30
+
+
+def _apply_relevance_classifier(question: str, chunks: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    candidates = chunks[:RELEVANCE_CLASSIFIER_CANDIDATES]
+    scored = classify_relevance(question, candidates)
+    if not scored:
+        return chunks
+
+    by_id = {chunk["id"]: chunk for chunk in scored}
+    blended = []
+    for chunk in chunks:
+        scored_chunk = by_id.get(chunk["id"])
+        if scored_chunk is None:
+            blended.append(chunk)
+            continue
+        relevance_score = scored_chunk["relevance_score"]
+        score = float(chunk["score"]) * (1 - RELEVANCE_CLASSIFIER_WEIGHT) + relevance_score * RELEVANCE_CLASSIFIER_WEIGHT
+        blended.append({**chunk, "score": round(score, 6), "relevance_score": relevance_score})
     return sorted(blended, key=lambda item: item["score"], reverse=True)
 
 

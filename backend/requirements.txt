@@ -8,5 +8,8 @@ PyMuPDF==1.25.1
 openai==1.59.7
 chromadb==0.6.3
 sentence-transformers==3.3.1
+transformers==4.57.6
+torch==2.13.0
+huggingface_hub==0.36.2
 pytest==8.3.4
 httpx==0.28.1
