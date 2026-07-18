@@ -1,6 +1,7 @@
 import type {
   AskResponse,
   AuthResponse,
+  Citation,
   Flashcard,
   ProgressSummary,
   Quiz,
@@ -72,6 +73,61 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+async function askStream(
+  documentId: string,
+  question: string,
+  handlers: { onCitations: (citations: Citation[]) => void; onDelta: (delta: string) => void },
+  signal?: AbortSignal,
+): Promise<void> {
+  const token = getToken();
+  const headers = new Headers({ "Content-Type": "application/json" });
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+
+  let response: Response;
+  try {
+    response = await fetch(`${getApiUrl()}/documents/${documentId}/ask/stream`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ question }),
+      signal,
+    });
+  } catch {
+    throw new Error("Could not reach the backend. Check that the API server and Next.js proxy are running.");
+  }
+  if (!response.ok || !response.body) {
+    throw new Error("Answer generation failed.");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    let boundary = buffer.indexOf("\n\n");
+    while (boundary !== -1) {
+      const rawEvent = buffer.slice(0, boundary);
+      buffer = buffer.slice(boundary + 2);
+
+      let eventName = "message";
+      let dataLine = "";
+      for (const line of rawEvent.split("\n")) {
+        if (line.startsWith("event: ")) eventName = line.slice("event: ".length);
+        if (line.startsWith("data: ")) dataLine = line.slice("data: ".length);
+      }
+      if (dataLine) {
+        const data = JSON.parse(dataLine);
+        if (eventName === "citations") handlers.onCitations(data as Citation[]);
+        if (eventName === "delta") handlers.onDelta(data as string);
+      }
+      boundary = buffer.indexOf("\n\n");
+    }
+  }
+}
+
 export const api = {
   register: (payload: { name: string; email: string; password: string }) =>
     request<AuthResponse>("/auth/register", { method: "POST", body: JSON.stringify(payload) }),
@@ -90,6 +146,12 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ question }),
     }),
+  askStream: (
+    documentId: string,
+    question: string,
+    handlers: { onCitations: (citations: Citation[]) => void; onDelta: (delta: string) => void },
+    signal?: AbortSignal,
+  ) => askStream(documentId, question, handlers, signal),
   quizzes: () => request<Quiz[]>("/quizzes"),
   quiz: (quizId: string) => request<Quiz>(`/quizzes/${quizId}`),
   createQuiz: (documentId: string, question_count: number, difficulty: string) =>

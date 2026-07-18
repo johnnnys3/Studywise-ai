@@ -6,7 +6,7 @@ import { AppShell } from "@/components/common/AppShell";
 import { PageHeader } from "@/components/common/PageHeader";
 import { CitationBlock } from "@/components/chat/CitationBlock";
 import { api } from "@/lib/api";
-import type { AskResponse } from "@/types";
+import type { AskResponse, Citation } from "@/types";
 
 export default function AskDocumentPage() {
   const params = useParams<{ documentId: string }>();
@@ -21,12 +21,31 @@ export default function AskDocumentPage() {
     const askedQuestion = question.trim();
     setError("");
     setLoading(true);
+
+    setResponses((current) => [
+      { question: askedQuestion, response: { answer: "", citations: [], retrieved_context: [] } },
+      ...current,
+    ]);
+    setQuestion("");
+
     try {
-      const response = await api.ask(params.documentId, askedQuestion);
-      setResponses((current) => [{ question: askedQuestion, response }, ...current]);
-      setQuestion("");
+      await api.askStream(params.documentId, askedQuestion, {
+        onCitations: (citations: Citation[]) => {
+          setResponses((current) => {
+            const [first, ...rest] = current;
+            return [{ ...first, response: { ...first.response, citations } }, ...rest];
+          });
+        },
+        onDelta: (delta: string) => {
+          setResponses((current) => {
+            const [first, ...rest] = current;
+            return [{ ...first, response: { ...first.response, answer: first.response.answer + delta } }, ...rest];
+          });
+        },
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Answer generation failed.");
+      setResponses((current) => current.slice(1));
     } finally {
       setLoading(false);
     }

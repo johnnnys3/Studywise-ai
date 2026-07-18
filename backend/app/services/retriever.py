@@ -4,6 +4,7 @@ from collections import Counter
 from typing import Any
 
 from app.services.llm_service import create_structured_response, is_ai_configured
+from app.services.reranker import rerank as cross_encoder_rerank
 from app.services.vector_store import query_document_chunks
 from app.storage import store
 
@@ -200,6 +201,9 @@ def _dedupe(chunks: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return deduped
 
 
+CROSS_ENCODER_CANDIDATES = 30
+
+
 def _rerank(question: str, chunks: list[dict[str, Any]]) -> list[dict[str, Any]]:
     question_tokens = Counter(tokenize(question))
     reranked = []
@@ -209,7 +213,31 @@ def _rerank(question: str, chunks: list[dict[str, Any]]) -> list[dict[str, Any]]
         proposition_bonus = min(float(chunk.get("proposition_score", 0)), 1.0) * 0.18
         score = float(chunk.get("score", 0)) + support_score + content_bonus + proposition_bonus
         reranked.append({**chunk, "score": round(score, 6), "support_score": round(support_score, 6)})
-    return sorted(reranked, key=lambda item: item["score"], reverse=True)
+    reranked.sort(key=lambda item: item["score"], reverse=True)
+    return _apply_cross_encoder(question, reranked)
+
+
+def _apply_cross_encoder(question: str, chunks: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    candidates = chunks[:CROSS_ENCODER_CANDIDATES]
+    scored = cross_encoder_rerank(question, candidates)
+    if not scored:
+        return chunks
+
+    ce_scores = [chunk["cross_encoder_score"] for chunk in scored]
+    lowest, highest = min(ce_scores), max(ce_scores)
+    spread = highest - lowest or 1.0
+    by_id = {chunk["id"]: chunk for chunk in scored}
+
+    blended = []
+    for chunk in chunks:
+        ce_chunk = by_id.get(chunk["id"])
+        if ce_chunk is None:
+            blended.append(chunk)
+            continue
+        normalized_ce = (ce_chunk["cross_encoder_score"] - lowest) / spread
+        score = float(chunk["score"]) * 0.4 + normalized_ce * 0.6
+        blended.append({**chunk, "score": round(score, 6), "cross_encoder_score": ce_chunk["cross_encoder_score"]})
+    return sorted(blended, key=lambda item: item["score"], reverse=True)
 
 
 def _filtered_chunks(user_id: str, document_id: str, page_filter: list[int] | None) -> list[dict[str, Any]]:

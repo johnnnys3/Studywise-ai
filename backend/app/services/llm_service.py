@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, Iterator
 
 import httpx
 
@@ -52,6 +52,45 @@ def create_text_response(system_instructions: str, user_input: str) -> str:
     if settings.ai_provider != "openai":
         raise RuntimeError(f"Unsupported AI_PROVIDER: {settings.ai_provider}")
     return _create_openai_text_response(system_instructions, user_input)
+
+
+def stream_text_response(system_instructions: str, user_input: str) -> Iterator[str]:
+    settings = get_settings()
+    if settings.ai_provider == "gemini":
+        yield _create_gemini_text_response(system_instructions, user_input)
+        return
+    if settings.ai_provider != "openai":
+        raise RuntimeError(f"Unsupported AI_PROVIDER: {settings.ai_provider}")
+    yield from _stream_openai_text_response(system_instructions, user_input)
+
+
+def _stream_openai_text_response(system_instructions: str, user_input: str) -> Iterator[str]:
+    settings = get_settings()
+    payload = {
+        "model": settings.openai_model,
+        "input": [
+            {"role": "system", "content": system_instructions},
+            {"role": "user", "content": user_input},
+        ],
+        "stream": True,
+    }
+    with httpx.Client(timeout=settings.ai_timeout_seconds) as client:
+        with client.stream("POST", RESPONSES_URL, headers=_openai_headers(), json=payload) as response:
+            response.raise_for_status()
+            for line in response.iter_lines():
+                if not line or not line.startswith("data: "):
+                    continue
+                data = line[len("data: "):].strip()
+                if data == "[DONE]":
+                    break
+                try:
+                    event = json.loads(data)
+                except json.JSONDecodeError:
+                    continue
+                if event.get("type") == "response.output_text.delta":
+                    delta = event.get("delta")
+                    if isinstance(delta, str) and delta:
+                        yield delta
 
 
 def create_structured_response(system_instructions: str, user_input: str, schema_name: str, schema: dict[str, Any]) -> dict[str, Any]:

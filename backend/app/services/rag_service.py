@@ -1,8 +1,8 @@
 import re
-from typing import Any
+from typing import Any, Iterator
 
 from app.prompts.rag_prompts import RAG_ANSWER_SYSTEM_PROMPT
-from app.services.llm_service import create_text_response, is_ai_configured
+from app.services.llm_service import create_text_response, is_ai_configured, stream_text_response
 from app.services.retriever import retrieve_chunks, tokenize
 from app.storage import store
 
@@ -16,19 +16,7 @@ def build_answer(user_id: str, document_id: str, question: str) -> dict[str, Any
         query_terms = set(tokenize(question))
         selected_sentences = _compress_relevant_sentences(query_terms, retrieved_chunks)
 
-        citations = [
-            {
-                "document_id": chunk["document_id"],
-                "chunk_id": chunk["id"],
-                "page_number": chunk["page_number"],
-                "page_start": chunk.get("page_start", chunk["page_number"]),
-                "page_end": chunk.get("page_end", chunk["page_number"]),
-                "chunk_index": chunk["chunk_index"],
-                "section_title": chunk.get("section_title"),
-                "source_label": _source_label(chunk),
-            }
-            for chunk in retrieved_chunks[:3]
-        ]
+        citations = _build_citations(retrieved_chunks)
         if is_ai_configured():
             try:
                 answer = _build_ai_answer(question, retrieved_chunks)
@@ -61,13 +49,68 @@ def _build_local_answer(selected_sentences: list[str], retrieved_chunks: list[di
 
 
 def _build_ai_answer(question: str, retrieved_chunks: list[dict[str, Any]]) -> str:
+    return create_text_response(RAG_ANSWER_SYSTEM_PROMPT, _build_ai_user_input(question, retrieved_chunks))
+
+
+def _build_ai_user_input(question: str, retrieved_chunks: list[dict[str, Any]]) -> str:
     context = "\n\n".join(_format_context_block(chunk) for chunk in retrieved_chunks[:8])
-    user_input = (
+    return (
         f"Student question:\n{question}\n\n"
         f"Retrieved context blocks:\n{context}\n\n"
         "Write a concise answer grounded in these blocks. If evidence conflicts, explain the conflict with citations."
     )
-    return create_text_response(RAG_ANSWER_SYSTEM_PROMPT, user_input)
+
+
+def stream_answer(user_id: str, document_id: str, question: str) -> Iterator[tuple[str, Any]]:
+    """Yields ("citations", list), then ("delta", str) chunks, then ("done", dict)."""
+    retrieved_chunks = retrieve_chunks(user_id, document_id, question)
+    if not retrieved_chunks:
+        answer = "I cannot find enough information in the uploaded document to answer that."
+        citations: list[dict[str, Any]] = []
+        yield ("citations", citations)
+        yield ("delta", answer)
+    else:
+        citations = _build_citations(retrieved_chunks)
+        yield ("citations", citations)
+        answer = ""
+        if is_ai_configured():
+            try:
+                for delta in stream_text_response(RAG_ANSWER_SYSTEM_PROMPT, _build_ai_user_input(question, retrieved_chunks)):
+                    answer += delta
+                    yield ("delta", delta)
+            except Exception:
+                answer = ""
+        if not answer:
+            query_terms = set(tokenize(question))
+            selected_sentences = _compress_relevant_sentences(query_terms, retrieved_chunks)
+            answer = _build_local_answer(selected_sentences, retrieved_chunks)
+            yield ("delta", answer)
+
+    user_message = store.insert(
+        "chat_messages",
+        {"user_id": user_id, "document_id": document_id, "role": "user", "content": question, "citations_json": []},
+    )
+    assistant_message = store.insert(
+        "chat_messages",
+        {"user_id": user_id, "document_id": document_id, "role": "assistant", "content": answer, "citations_json": citations},
+    )
+    yield ("done", {"messages": [user_message, assistant_message]})
+
+
+def _build_citations(retrieved_chunks: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        {
+            "document_id": chunk["document_id"],
+            "chunk_id": chunk["id"],
+            "page_number": chunk["page_number"],
+            "page_start": chunk.get("page_start", chunk["page_number"]),
+            "page_end": chunk.get("page_end", chunk["page_number"]),
+            "chunk_index": chunk["chunk_index"],
+            "section_title": chunk.get("section_title"),
+            "source_label": _source_label(chunk),
+        }
+        for chunk in retrieved_chunks[:3]
+    ]
 
 
 def _format_context_block(chunk: dict[str, Any]) -> str:
