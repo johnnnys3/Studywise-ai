@@ -197,7 +197,9 @@ def _looks_like_heading(text: str) -> bool:
     alpha = [char for char in normalized if char.isalpha()]
     if alpha and sum(char.isupper() for char in alpha) / len(alpha) > 0.7:
         return True
-    return normalized.istitle() and len(words) <= 8
+    if normalized.istitle() and len(words) <= 8:
+        return True
+    return len(words) <= 6 and not re.search(r"[.,;:!?]", normalized)
 
 
 def _normalize_heading(text: str) -> str:
